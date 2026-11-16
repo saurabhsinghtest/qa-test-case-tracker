@@ -1,0 +1,32 @@
+/* Global styles — base reset and design tokens.
+   The full theme, layout and responsive breakpoints are added in Step 4. */
+:root {
+  --color-bg: #f6f7fb;
+  --color-surface: #ffffff;
+  --color-text: #1f2937;
+  --color-muted: #6b7280;
+  --color-primary: #4f46e5;
+  --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.app-placeholder {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
