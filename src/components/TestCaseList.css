@@ -1,0 +1,204 @@
+/* ---------- Filter bar ---------- */
+.filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.filter-bar__selects {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (min-width: 1024px) {
+  .filter-bar__selects {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.filter-bar__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* ---------- Table ---------- */
+.table-wrapper {
+  position: relative;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  /* Scroll inside the card (never clip columns or widen the page) */
+  overflow-x: auto;
+}
+
+.tc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.925rem;
+}
+
+.tc-table th {
+  padding: 0.75rem 1rem;
+  background: var(--color-surface-muted);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+
+.tc-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.tc-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tc-table tbody tr:hover {
+  background: var(--color-surface-muted);
+}
+
+.tc-table__title {
+  min-width: 14rem;
+}
+
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+
+/* Status select styled like a badge */
+.status-select {
+  width: auto;
+  min-width: 7.5rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.status-select--passed {
+  background: var(--passed-soft);
+  border-color: #86efac;
+  color: var(--passed-text);
+}
+
+.status-select--failed {
+  background: var(--failed-soft);
+  border-color: #fca5a5;
+  color: var(--failed-text);
+}
+
+.status-select--blocked {
+  background: var(--blocked-soft);
+  border-color: #fcd34d;
+  color: var(--blocked-text);
+}
+
+.status-select--not-run {
+  background: var(--not-run-soft);
+  border-color: var(--color-border-strong);
+  color: var(--not-run-text);
+}
+
+.status-select option {
+  background: #fff;
+  color: var(--color-text);
+}
+
+/* ---------- Mobile and tablet (< 1024px): rows become cards ---------- */
+@media (max-width: 1023px) {
+  .table-wrapper {
+    background: none;
+    border: none;
+    box-shadow: none;
+  }
+
+  .tc-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .tc-table,
+  .tc-table tbody,
+  .tc-table tr,
+  .tc-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .tc-table tr {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .tc-table tbody tr:hover {
+    background: var(--color-surface);
+  }
+
+  .tc-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.4rem 0;
+    border-bottom: none;
+    min-width: 0;
+  }
+
+  .tc-table td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-muted);
+  }
+
+  .tc-table td.tc-table__title {
+    min-width: 0;
+    text-align: right;
+  }
+
+  .tc-table td.tc-table__title .link-button {
+    text-align: right;
+  }
+
+  .tc-table td[data-label='Actions'] {
+    margin-top: 0.4rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .tc-table td[data-label='Actions']::before {
+    content: none;
+  }
+
+  .row-actions {
+    width: 100%;
+  }
+}

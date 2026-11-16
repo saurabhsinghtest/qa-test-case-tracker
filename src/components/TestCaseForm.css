@@ -1,0 +1,44 @@
+.tc-form {
+  max-width: 56rem;
+}
+
+.tc-form .alert {
+  margin-bottom: 1.25rem;
+}
+
+/* Mobile: one column. From 640px: 6-column grid —
+   default fields span 2 (three per row), half-width span 3, full-width span 6. */
+.tc-form__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.1rem;
+}
+
+@media (min-width: 640px) {
+  .tc-form__grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .tc-form__grid > .field {
+    grid-column: span 2;
+  }
+
+  .tc-form__grid > .tc-form__half {
+    grid-column: span 3;
+  }
+
+  .tc-form__grid > .tc-form__full {
+    grid-column: 1 / -1;
+  }
+}
+
+.tc-form .form-actions {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 639px) {
+  .tc-form .form-actions .btn {
+    flex: 1;
+  }
+}
