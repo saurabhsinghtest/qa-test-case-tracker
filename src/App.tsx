@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { Dashboard } from './components/Dashboard'
 import { EmptyState } from './components/EmptyState'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { Header } from './components/Header'
 import { ImportExport } from './components/ImportExport'
 import { Notification, type NotificationData, type NotificationType } from './components/Notification'
@@ -193,9 +194,11 @@ function AppContent() {
 
 function App() {
   return (
-    <TestCaseProvider>
-      <AppContent />
-    </TestCaseProvider>
+    <ErrorBoundary>
+      <TestCaseProvider>
+        <AppContent />
+      </TestCaseProvider>
+    </ErrorBoundary>
   )
 }
 

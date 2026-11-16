@@ -10,6 +10,8 @@ export type TestCaseAction =
   | { type: 'SET_STATUS'; id: string; status: TestStatus; now: Date }
   | { type: 'IMPORT_REPLACE'; testCases: TestCase[] }
   | { type: 'IMPORT_MERGE'; testCases: TestCase[] }
+  /** Replace state with data saved by another browser tab. */
+  | { type: 'LOAD'; testCases: TestCase[] }
 
 function updateById(
   state: TestCase[],
@@ -45,6 +47,8 @@ export function testCaseReducer(state: TestCase[], action: TestCaseAction): Test
       return ensureUniqueKeys(action.testCases)
     case 'IMPORT_MERGE':
       return mergeTestCases(state, action.testCases)
+    case 'LOAD':
+      return action.testCases
     default:
       return state
   }

@@ -83,7 +83,9 @@ describe('sanitizeTestCase', () => {
 
 describe('parseImport', () => {
   it('accepts a bare array', () => {
-    const result = parseImport(JSON.stringify([{ title: 'One', status: 'Passed', priority: 'Low' }]))
+    const result = parseImport(
+      JSON.stringify([{ title: 'One', status: 'Passed', priority: 'Low', expectedResult: 'Works' }]),
+    )
     expect(result.ok && result.testCases).toHaveLength(1)
     expect(result.ok && result.testCases[0].key).toBe('TC-001')
   })
@@ -108,19 +110,52 @@ describe('parseImport', () => {
 
   it('names the invalid item', () => {
     const json = JSON.stringify([
-      { title: 'Ok', status: 'Passed', priority: 'Low' },
-      { title: 'Bad', status: 'Unknown', priority: 'Low' },
+      { title: 'Okay', status: 'Passed', priority: 'Low', expectedResult: 'Works' },
+      { title: 'Bad', status: 'Unknown', priority: 'Low', expectedResult: 'Works' },
     ])
     expectError(parseImport(json), /Test case #2 has an invalid status/)
   })
 
   it('removes duplicate IDs, keeping the last version', () => {
     const json = JSON.stringify([
-      { id: 'same', key: 'TC-001', title: 'First', status: 'Passed', priority: 'Low' },
-      { id: 'same', key: 'TC-001', title: 'Second', status: 'Failed', priority: 'Low' },
+      { id: 'same', key: 'TC-001', title: 'First', status: 'Passed', priority: 'Low', expectedResult: 'E' },
+      { id: 'same', key: 'TC-001', title: 'Second', status: 'Failed', priority: 'Low', expectedResult: 'E' },
     ])
     const result = parseImport(json)
     expect(result.ok && result.testCases.map((tc) => tc.title)).toEqual(['Second'])
+  })
+
+  // Review fix M1: imports must follow the same rules as the create/edit form
+  it.each([
+    [{ title: 'ab' }, /#1 has an invalid title \(Title must be at least 3 characters\)\.$/],
+    [{ expectedResult: '' }, /#1 has an invalid expected result \(Expected result is required\)\.$/],
+    [{ module: 'm'.repeat(51) }, /#1 has an invalid module \(Module must be 50 characters or fewer\)\.$/],
+    [{ steps: 's'.repeat(2001) }, /#1 has an invalid test steps \(Must be 2000 characters or fewer\)\.$/],
+  ])('applies form validation rules to imported items (%#)', (override, pattern) => {
+    const item = { title: 'Valid title', status: 'Passed', priority: 'Low', expectedResult: 'Works', ...override }
+    expectError(parseImport(JSON.stringify([item])), pattern)
+  })
+
+  // Review fix M2: dates are normalized to ISO so date sorting stays correct
+  it('normalizes imported dates to ISO format', () => {
+    const result = parseImport(
+      JSON.stringify([
+        {
+          title: 'Dated',
+          status: 'Passed',
+          priority: 'Low',
+          expectedResult: 'E',
+          createdAt: '2026-12-01T10:00:00+02:00',
+          updatedAt: '2026-12-01',
+          lastExecutedAt: '2026-12-01T10:00:00+02:00',
+        },
+      ]),
+    )
+    expect(result.ok && result.testCases[0]).toMatchObject({
+      createdAt: '2026-12-01T08:00:00.000Z',
+      updatedAt: '2026-12-01T00:00:00.000Z',
+      lastExecutedAt: '2026-12-01T08:00:00.000Z',
+    })
   })
 })
 

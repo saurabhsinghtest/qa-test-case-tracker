@@ -44,6 +44,8 @@ export function ImportExport({ onNotify }: ImportExportProps) {
     setPreview(null)
     setError(null)
     const file = event.target.files?.[0]
+    // Clear the input so choosing the same file again (e.g. after fixing it) triggers a new change event
+    event.target.value = ''
     if (!file) return
 
     if (file.size > MAX_IMPORT_BYTES) {

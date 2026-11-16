@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useReducer, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react'
 import type { TestCase, TestCaseInput, TestStatus } from '../types/testCase'
-import { loadInitialTestCases, saveTestCases } from '../utils/storage'
+import { loadInitialTestCases, loadTestCases, saveTestCases, STORAGE_KEY } from '../utils/storage'
 import { generateId } from '../utils/testCaseUtils'
 import { TestCaseContext, type ImportMode, type TestCaseContextValue } from './TestCaseContext'
 import { testCaseReducer } from './testCaseReducer'
@@ -18,13 +18,32 @@ export function TestCaseProvider({ children, initialTestCases }: TestCaseProvide
     (initial?: TestCase[]) => initial ?? loadInitialTestCases(),
   )
   const [storageError, setStorageError] = useState(false)
+  // True when the current state was just loaded from another tab's save, so it must not be written back
+  const loadedFromOtherTab = useRef(false)
 
   // Persist every change to localStorage (an external system) and record whether the write failed,
   // so the UI can warn the user. The result is only known after writing, hence state set in an effect.
   useEffect(() => {
+    if (loadedFromOtherTab.current) {
+      loadedFromOtherTab.current = false
+      return
+    }
     // oxlint-disable-next-line react/set-state-in-effect
     setStorageError(!saveTestCases(testCases))
   }, [testCases])
+
+  // Keep multiple open tabs in sync: when another tab saves, load its data instead of
+  // later overwriting it with this tab's stale copy (which would silently lose changes).
+  useEffect(() => {
+    function handleStorage(event: StorageEvent) {
+      // key is null when another tab cleared all storage
+      if (event.key !== STORAGE_KEY && event.key !== null) return
+      loadedFromOtherTab.current = true
+      dispatch({ type: 'LOAD', testCases: loadTestCases() ?? [] })
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
 
   const addTestCase = useCallback((input: TestCaseInput) => {
     const id = generateId()

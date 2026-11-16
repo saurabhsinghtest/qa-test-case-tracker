@@ -63,6 +63,11 @@ describe('testCaseReducer', () => {
     expect(next[5]).toMatchObject({ id: 'new', key: 'TC-050' })
   })
 
+  it('LOAD replaces state with data from another tab', () => {
+    const fromOtherTab = [makeTestCase({ id: 'other', key: 'TC-001' })]
+    expect(testCaseReducer(FIXTURE_CASES, { type: 'LOAD', testCases: fromOtherTab })).toBe(fromOtherTab)
+  })
+
   it('ignores unknown actions', () => {
     expect(testCaseReducer(FIXTURE_CASES, { type: 'UNKNOWN' } as unknown as TestCaseAction)).toBe(FIXTURE_CASES)
   })

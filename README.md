@@ -2,7 +2,7 @@
 
 A lightweight, browser-based web app for writing manual QA test cases, recording their execution status (**Passed**, **Failed**, **Blocked**, **Not Run**) and seeing test health at a glance. It needs no account and no backend: all data is stored in your browser's `localStorage`.
 
-- **Live application:** Deployment pending — will be updated after Phase 7.
+- **Live application:** https://main.d1y2559j5laol1.amplifyapp.com (hosted on AWS Amplify)
 - **Repository:** https://github.com/saurabhsinghtest/qa-test-case-tracker
 
 ---
@@ -78,16 +78,19 @@ QA Test Case Tracker is a simple, free, no-login web app for creating test cases
 ### 💬 Success and error messages
 - A notification (toast) confirms every action, for example *"TC-004 marked as Failed."* or *"Changes saved."*
 - Import problems show clear error messages, and a warning banner appears if the browser can't save data.
+- If the app ever hits an unexpected error, a recovery screen appears (instead of a blank page) with **Download backup (JSON)** and **Reload page** buttons.
 
 ### 💾 localStorage persistence
 - Every change is saved to the browser automatically and is still there after a page refresh.
+- **Multiple tabs stay in sync:** changes saved in one tab appear in other open tabs, so one tab never silently overwrites another tab's work.
 - On the first visit, **sample test cases** are loaded so the dashboard isn't empty. If you later delete everything, the list stays empty.
 - Saved data is checked when it loads, so invalid entries are skipped instead of breaking the app.
 
 ### 📁 JSON import and export
 - **Export** downloads all test cases as `qa-test-cases-YYYY-MM-DD.json`.
 - **Import** accepts a file exported by this app or a plain JSON list of test cases, up to 5 MB.
-  - The file is checked before anything changes. Errors are specific, e.g. *"Test case #2 has an invalid status "Done"."*
+  - The file is checked before anything changes, using **the same rules as the form** (required fields and length limits), so every imported test case can be edited afterwards. Errors name the problem item, e.g. *"Test case #2 has an invalid status "Done"."*
+  - Dates in any common format are converted to a standard (ISO) format, so sorting by date stays correct.
   - A preview shows how many test cases were found.
   - **Merge** adds new test cases and updates ones with the same ID.
   - **Replace** swaps out all current data, after you confirm.
@@ -116,7 +119,7 @@ Versions below are the ones installed in this project.
 | Test browser environment | [jsdom](https://github.com/jsdom/jsdom) | 31.0.1 |
 | Linting | [Oxlint](https://oxc.rs/) | 1.93.0 |
 | Version control | Git + GitHub | — |
-| Hosting (planned) | Vercel | — |
+| Hosting | [AWS Amplify Hosting](https://aws.amazon.com/amplify/hosting/), deploying automatically from the `main` branch | — |
 
 The app has only two runtime dependencies (`react` and `react-dom`). Everything else is a development tool.
 
@@ -151,8 +154,8 @@ qa-test-case-tracker/
     │   ├── format.ts        #   Date and text formatting helpers
     │   └── fileIO.ts        #   File download and file reading
     ├── context/             # State management
-    │   ├── testCaseReducer.ts   # All data changes (add, update, delete, status, import)
-    │   ├── TestCaseProvider.tsx # Holds state and saves it to localStorage
+    │   ├── testCaseReducer.ts   # All data changes (add, update, delete, status, import, tab sync)
+    │   ├── TestCaseProvider.tsx # Holds state, saves it to localStorage, syncs between tabs
     │   ├── TestCaseContext.ts   # Context definition
     │   └── useTestCases.ts      # Hook used by components
     ├── components/          # UI components (each screen has its own .css file)
@@ -161,6 +164,7 @@ qa-test-case-tracker/
     │   ├── TestCaseForm.tsx     # Create/edit form with validation
     │   ├── TestCaseDetail.tsx   # Detail view with status buttons
     │   ├── ImportExport.tsx     # JSON import/export screen
+    │   ├── ErrorBoundary.tsx    # Recovery screen for unexpected errors
     │   ├── Header.tsx, ConfirmDialog.tsx, Notification.tsx, ...
     ├── styles/
     │   └── global.css       # Design tokens, layout, shared styles, breakpoints
@@ -175,7 +179,7 @@ qa-test-case-tracker/
 
 ## Prerequisites
 
-- **Node.js** version **22.22.2 or newer** in the 22.x line, **24.15 or newer** in the 24.x line, or **26 or newer**. Vitest 5 and jsdom 31 require these. The current LTS release is recommended. Check with `node -v`.
+- **Node.js** version **22.22.2 or newer** in the 22.x line, **24.15 or newer** in the 24.x line, or **26 or newer**. Vitest 5 and jsdom 31 require these, and the range is declared in the `engines` field of `package.json`. The current LTS release is recommended. (The production build itself only needs Node 20.19+ or 22.12+, the Vite 8 requirement.) Check with `node -v`.
 - **npm**, which comes with Node.js. Check with `npm -v`.
 - **Git**, to clone the repository.
 - A modern browser (Chrome, Edge, Firefox or Safari).
@@ -225,13 +229,13 @@ npm run test:watch      # re-run tests automatically when files change
 npm run test:coverage   # run tests and print a coverage report
 ```
 
-**Current result: 129 tests in 14 files, all passing.**
+**Current result: 142 tests in 15 files, all passing.**
 
 | Type | Location | What is covered |
 |---|---|---|
 | Unit tests | `src/tests/*.test.ts` | Validation rules, ID and key generation, search, filters and sorting, statistics (including empty data), JSON import validation and merge, localStorage (including corrupt data and save failures), file helpers, and every reducer action |
-| Component tests | `src/tests/components/` | Form validation and focus handling, list filtering and row actions, dashboard numbers, confirmation dialog keyboard behaviour, import/export screen |
-| Integration tests | `src/tests/App.test.tsx` | Full user flows through the real app and localStorage: create, edit, delete, status changes updating the dashboard, filtering, and loading saved data |
+| Component tests | `src/tests/components/` | Form validation and focus handling, list filtering and row actions, dashboard numbers, confirmation dialog keyboard behaviour, import/export screen, error recovery screen |
+| Integration tests | `src/tests/App.test.tsx` | Full user flows through the real app and localStorage: create, edit, delete, status changes updating the dashboard, filtering, loading saved data, and syncing changes between browser tabs |
 
 Tests find elements by their **accessible role and name** (e.g. "button named *Delete TC-001*"), the way a user or screen reader would, which also checks basic accessibility.
 
@@ -256,7 +260,7 @@ This type-checks the project with `tsc -b` and builds an optimised static site i
 npm run preview
 ```
 
-The output is a static site, so it can be hosted on any static host (Vercel is planned for this project).
+The output is a static site with no server code, so it can be hosted on any static host. This project is deployed on **AWS Amplify Hosting** (see [Live Application URL](#live-application-url)).
 
 ---
 
@@ -282,7 +286,11 @@ The output is a static site, so it can be hosted on any static host (Vercel is p
 
 ## Live Application URL
 
-Deployment pending — will be updated after Phase 7.
+**https://main.d1y2559j5laol1.amplifyapp.com**
+
+The app is hosted on **AWS Amplify Hosting**, which is connected to this repository's `main` branch. Every push to `main` triggers a new build (`npm run build`) and deploys the `dist/` output automatically.
+
+> Data is stored in each visitor's own browser (`localStorage`), so the live site starts with sample data and nothing is shared between users or devices. Use **Import / Export** to move data.
 
 ---
 
@@ -298,4 +306,5 @@ This application was developed as part of a **Generative AI assignment** to plan
 4. **Local verification:** automated tests plus browser checks at mobile, tablet and desktop sizes
 5. **GitHub:** repository creation and push
 6. **Documentation:** this README
-7. **Deployment:** Vercel (pending)
+7. **Deployment:** AWS Amplify Hosting with continuous deployment from `main`
+8. **AI code review:** review report and fixes (cross-tab sync, import validation, error recovery)

@@ -55,8 +55,8 @@ describe('ImportExport', () => {
   it('previews and merges a valid file', async () => {
     const { onNotify, user } = renderImportExport()
     const file = jsonFile([
-      { id: 'a', title: 'Updated login', status: 'Failed', priority: 'Critical' },
-      { id: 'new-1', title: 'New case', status: 'Not Run', priority: 'Low' },
+      { id: 'a', title: 'Updated login', status: 'Failed', priority: 'Critical', expectedResult: 'Signed in' },
+      { id: 'new-1', title: 'New case', status: 'Not Run', priority: 'Low', expectedResult: 'Works' },
     ])
     await user.upload(screen.getByLabelText('JSON file'), file)
 
@@ -76,6 +76,20 @@ describe('ImportExport', () => {
     expect(alert).toHaveTextContent('Import failed')
     expect(alert).toHaveTextContent('The file is not valid JSON.')
     expect(screen.queryByRole('button', { name: /^import \d/i })).not.toBeInTheDocument()
+  })
+
+  // Review fix L1: the input is cleared so the same (fixed) file can be chosen again
+  it('clears the file input after reading so the same file can be selected again', async () => {
+    const { user } = renderImportExport()
+    const input = screen.getByLabelText<HTMLInputElement>('JSON file')
+    await user.upload(input, jsonFile('{oops', 'cases.json'))
+    await screen.findByRole('alert')
+
+    expect(input.value).toBe('')
+    expect(input.files).toHaveLength(0)
+
+    await user.upload(input, jsonFile([makeTestCase({ id: 'fixed' })], 'cases.json'))
+    expect(await screen.findByText(/Found/)).toHaveTextContent('Found 1 test case in cases.json.')
   })
 
   it('asks for confirmation before replacing all data', async () => {

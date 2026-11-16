@@ -1,6 +1,13 @@
 // JSON export/import: building the export file, validating imported data, and merging.
-import { isPriority, isTestStatus, type TestCase } from '../types/testCase'
-import { formatKey, generateId, keyNumber, TITLE_MAX } from './testCaseUtils'
+import { isPriority, isTestStatus, type TestCase, type TestCaseInput } from '../types/testCase'
+import {
+  formatKey,
+  generateId,
+  keyNumber,
+  TITLE_MAX,
+  toInput,
+  validateTestCaseInput,
+} from './testCaseUtils'
 
 export const EXPORT_APP_ID = 'qa-test-case-tracker'
 export const EXPORT_VERSION = 1
@@ -30,8 +37,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function isValidDate(value: unknown): value is string {
-  return typeof value === 'string' && value !== '' && !Number.isNaN(new Date(value).getTime())
+/** Field names used in import error messages. */
+const FIELD_NAMES: Record<keyof TestCaseInput, string> = {
+  title: 'title',
+  description: 'description',
+  module: 'module',
+  priority: 'priority',
+  preconditions: 'preconditions',
+  steps: 'test steps',
+  expectedResult: 'expected result',
+  actualResult: 'actual result',
+  status: 'status',
+}
+
+/**
+ * Converts any parseable date string to ISO 8601 (e.g. "Dec 1, 2026" -> "2026-12-01T…Z"),
+ * so sorting by date, which compares ISO strings, stays correct. Returns undefined if invalid.
+ */
+function toIsoDate(value: unknown): string | undefined {
+  if (typeof value !== 'string' || value.trim() === '') return undefined
+  const time = new Date(value).getTime()
+  return Number.isNaN(time) ? undefined : new Date(time).toISOString()
 }
 
 export function buildExport(testCases: readonly TestCase[], now = new Date()): ExportFile {
@@ -53,10 +79,17 @@ export function exportFileName(now = new Date()): string {
 
 /**
  * Validates one raw item and converts it to a clean TestCase.
- * Required: title, valid status, valid priority. Unknown fields are dropped;
- * missing optional values get safe defaults.
+ * Always required: title, valid status, valid priority. Unknown fields are dropped,
+ * missing optional values get safe defaults, and dates are normalized to ISO format.
+ *
+ * With `validateFields` (used for file imports), the item must also pass the same rules
+ * as the create/edit form, so imported test cases can always be edited and saved.
  */
-export function sanitizeTestCase(raw: unknown, now = new Date()): SanitizeResult {
+export function sanitizeTestCase(
+  raw: unknown,
+  now = new Date(),
+  { validateFields = false }: { validateFields?: boolean } = {},
+): SanitizeResult {
   if (!isRecord(raw)) return { ok: false, error: 'is not an object' }
 
   const title = typeof raw.title === 'string' ? raw.title.trim() : ''
@@ -84,14 +117,24 @@ export function sanitizeTestCase(raw: unknown, now = new Date()): SanitizeResult
     expectedResult: '',
     actualResult: '',
     status: raw.status,
-    createdAt: isValidDate(raw.createdAt) ? raw.createdAt : nowIso,
-    updatedAt: isValidDate(raw.updatedAt) ? raw.updatedAt : nowIso,
+    createdAt: toIsoDate(raw.createdAt) ?? nowIso,
+    updatedAt: toIsoDate(raw.updatedAt) ?? nowIso,
   }
   for (const field of TEXT_FIELDS) {
     const value = raw[field]
     if (typeof value === 'string') testCase[field] = value
   }
-  if (isValidDate(raw.lastExecutedAt)) testCase.lastExecutedAt = raw.lastExecutedAt
+  const lastExecutedAt = toIsoDate(raw.lastExecutedAt)
+  if (lastExecutedAt) testCase.lastExecutedAt = lastExecutedAt
+
+  if (validateFields) {
+    const errors = validateTestCaseInput(toInput(testCase))
+    const field = (Object.keys(FIELD_NAMES) as (keyof TestCaseInput)[]).find((f) => errors[f])
+    if (field) {
+      const message = errors[field]!.replace(/\.$/, '')
+      return { ok: false, error: `has an invalid ${FIELD_NAMES[field]} (${message})` }
+    }
+  }
 
   return { ok: true, testCase }
 }
@@ -160,7 +203,7 @@ export function parseImport(text: string, now = new Date()): ParseResult {
 
   const testCases: TestCase[] = []
   for (const [index, item] of items.entries()) {
-    const result = sanitizeTestCase(item, now)
+    const result = sanitizeTestCase(item, now, { validateFields: true })
     if (!result.ok) return { ok: false, error: `Test case #${index + 1} ${result.error}.` }
     testCases.push(result.testCase)
   }

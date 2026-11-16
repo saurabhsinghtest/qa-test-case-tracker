@@ -1,11 +1,11 @@
 // Integration tests: full user flows through the real App, provider and localStorage.
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 import type { TestCase } from '../types/testCase'
 import { getSampleTestCases } from '../utils/sampleData'
 import { STORAGE_KEY } from '../utils/storage'
-import { FIXTURE_CASES } from './fixtures'
+import { FIXTURE_CASES, makeTestCase } from './fixtures'
 
 function renderApp(seed: TestCase[] | null = FIXTURE_CASES) {
   if (seed) localStorage.setItem(STORAGE_KEY, JSON.stringify(seed))
@@ -127,6 +127,50 @@ describe('App', () => {
 
     expect(within(group).getByRole('button', { name: 'Passed' })).toHaveAttribute('aria-pressed', 'true')
     expect(stored().find((tc) => tc.id === 'd')?.status).toBe('Passed')
+  })
+
+  // Review fix H1: another open tab's changes must not be silently overwritten
+  describe('multiple tabs', () => {
+    /** Simulates another tab saving data (the browser fires a "storage" event in this tab). */
+    function saveFromOtherTab(cases: TestCase[]) {
+      const raw = JSON.stringify(cases)
+      localStorage.setItem(STORAGE_KEY, raw)
+      act(() => {
+        window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: raw }))
+      })
+      return raw
+    }
+
+    it('shows changes saved by another tab without writing them back', async () => {
+      const user = renderApp()
+      await user.click(nav().getByRole('button', { name: 'Test Cases' }))
+
+      const otherTabData = [...FIXTURE_CASES, makeTestCase({ id: 'tab-b', key: 'TC-011', title: 'Added in tab B' })]
+      const raw = saveFromOtherTab(otherTabData)
+
+      expect(screen.getByText('Added in tab B')).toBeInTheDocument()
+      expect(localStorage.getItem(STORAGE_KEY)).toBe(raw) // not re-saved by this tab
+    })
+
+    it("keeps the other tab's changes when this tab edits afterwards", async () => {
+      const user = renderApp()
+      await user.click(nav().getByRole('button', { name: 'Test Cases' }))
+      saveFromOtherTab([...FIXTURE_CASES, makeTestCase({ id: 'tab-b', key: 'TC-011', title: 'Added in tab B' })])
+
+      await user.selectOptions(screen.getByLabelText('Change status of TC-010'), 'Passed')
+
+      const ids = stored().map((tc) => tc.id)
+      expect(ids).toContain('tab-b') // previously this tab would have overwritten it
+      expect(stored().find((tc) => tc.id === 'e')?.status).toBe('Passed')
+    })
+
+    it('ignores storage events for other keys', async () => {
+      renderApp()
+      act(() => {
+        window.dispatchEvent(new StorageEvent('storage', { key: 'some-other-app', newValue: '[]' }))
+      })
+      expect(within(screen.getByRole('button', { name: /show all test cases/i })).getByText('5')).toBeInTheDocument()
+    })
   })
 
   it('opens the list filtered by status from a dashboard card and keeps search working', async () => {
